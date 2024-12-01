@@ -1,0 +1,7 @@
+To create a conda environment with necessary packages
+ $ conda create -n 4563_project python numpy conda-forge::scikit-learn
+ $ conda activate 4563_project
+ $ pip install matplotlib pyyaml
+
+Or alternatively:
+ $ conda env create -f conda_env.yaml

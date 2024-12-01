@@ -1,6 +1,6 @@
 import glob
 import numpy as np
-from os.path import join
+import os
 import pickle
 
 
@@ -23,9 +23,11 @@ def gather_data(dir_pattern):
 
 
 if __name__ == "__main__":
-    train_file = join("cifar-10-batches-py", "data_batch_*")
-    test_file = join("cifar-10-batches-py", "test_batch")
+    train_file = os.path.join("cifar-10-batches-py", "data_batch_*")
+    test_file = os.path.join("cifar-10-batches-py", "test_batch")
     train_imgs, train_labels = gather_data(train_file)
     test_imgs, test_labels = gather_data(test_file)
-    np.savez("train_data.npz", images=train_imgs, labels=train_labels)
-    np.savez("test_data.npz", images=test_imgs, labels=test_labels)
+    if not os.path.exists("train_data"): os.mkdir("train_data")
+    if not os.path.exists("test_data"): os.mkdir("test_data")
+    np.savez("train_data/collected_images.npz", images=train_imgs, labels=train_labels)
+    np.savez("test_data/collected_images.npz", images=test_imgs, labels=test_labels)

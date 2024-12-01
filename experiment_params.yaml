@@ -1,0 +1,5 @@
+# This is a YAML file, which can be loaded as a Python dictionary. It greatly simplifies configuring experiments
+# for future benefit, track all hyperparameters and other settings
+
+PCA:
+  components_to_use: [15, 23]    # interpreted as a **half-open** range
