@@ -1,7 +1,8 @@
 To create a conda environment with necessary packages
- $ conda create -n 4563_project python numpy conda-forge::scikit-learn
+ $ conda create -n 4563_project pytorch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1 pytorch-cuda=12.1 -c pytorch -c nvidia
  $ conda activate 4563_project
- $ pip install matplotlib pyyaml
+ $ conda install pandas numpy conda-forge::scikit-learn
+ $ pip install matplotlib pyyaml timm skorch
 
 Or alternatively:
  $ conda env create -f conda_env.yaml
