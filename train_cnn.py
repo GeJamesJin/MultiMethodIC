@@ -19,6 +19,9 @@ HPARAM_NAME_MAP = {"learning_rates": "lr",
                    "momentum": "optimizer__momentum",
                    "l2_reg": "optimizer__weight_decay"}
 
+VALIDATION_METRICS = [f"{base_type}_{avg}" for base_type in ["f1", "jaccard", "precision", "recall"] for avg in ["micro", "macro"]] \
+    + [f"roc_auc_{multicls}" for multicls in ["ovr", "ovo"]]
+
 
 def load_dataset(data_path):
     dataset = np.load(data_path)
@@ -62,8 +65,10 @@ def run_grid_search_on_model(model_creator, hyperperameters, device, data_path):
 
     X, y = load_dataset(data_path)
     X = torch.tensor(X.reshape((X.shape[0], 3, 32, 32))).float()
-    gs = GridSearchCV(trainer, gsearch_params, scoring="accuracy", n_jobs=3, refit=False, cv=4, verbose=4, return_train_score=True)
+    gs = GridSearchCV(trainer, gsearch_params, scoring=VALIDATION_METRICS + ["accuracy"], n_jobs=3, refit=False, cv=4, verbose=4, return_train_score=True)
     gs.fit(X, y)
+    gs.best_index_ = gs.cv_results_["rank_test_accuracy"].argmin()    # Hardcoded best params retrieval to avoid refitting under multimetric
+    gs.best_params_ = gs.cv_results_["params"][gs.best_index_]
     return gs
 
 
@@ -72,9 +77,7 @@ def train_and_save_model(model_creator, hyperperameters, device, data_path, save
     Except for optimizer, hyperperameter names should conform to skorch conventions and match parameter names of their destination
     (eg. module, optimizer)
     """
-    score_types = [f"{base_type}_{avg}" for base_type in ["f1", "jaccard", "precision", "recall"] for avg in ["micro", "macro"]]
-    score_types.extend([f"roc_auc_{multicls}" for multicls in ["ovr", "ovo"]])
-    performance_callbacks = [EpochScoring(scorer_name, lower_is_better=False, name=f"valid_{scorer_name}") for scorer_name in score_types]
+    performance_callbacks = [EpochScoring(scorer_name, lower_is_better=False, name=f"valid_{scorer_name}") for scorer_name in VALIDATION_METRICS]
     performance_callbacks.append(EpochScoring("accuracy", on_train=True, name="train_accuracy"))
     checkpoint_callbacks = [Checkpoint(dirname=save_path), TrainEndCheckpoint(dirname=save_path)]
 
