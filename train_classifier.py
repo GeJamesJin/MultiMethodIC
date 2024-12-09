@@ -54,10 +54,15 @@ def run_grid_search(model, X_train, y_train, param_grids, metrics, results_path)
     """
     Performs grid search for Logistic Regression and saves detailed metrics.
     """
+    _, inds = next(StratifiedKFold(2).split(np.zeros(X_train.shape[0]), y_train))
+    X_train, y_train = X_train[inds], y_train[inds]
+    print(f"Performing grid search on half of train data ({X_train.shape[0]} samples)")
     cv = StratifiedKFold(shuffle=True, random_state=42)
     # Find the best parameters and refit model on entire dataset using best parameters
-    grid_search = GridSearchCV(model, param_grids, scoring=metrics, refit="accuracy", cv=cv, n_jobs=-1, verbose=4, return_train_score=True)
+    grid_search = GridSearchCV(model, param_grids, scoring=metrics, refit=False, cv=cv, n_jobs=-1, verbose=4, return_train_score=True)
     grid_search.fit(X_train, y_train)
+    grid_search.best_index_ = grid_search.cv_results_["rank_test_accuracy"].argmin()    # Hardcoded best params retrieval to avoid refitting under multimetric
+    grid_search.best_params_ = grid_search.cv_results_["params"][grid_search.best_index_]
 
     # Save grid search results
     results_df = pd.DataFrame(grid_search.cv_results_)
@@ -66,16 +71,14 @@ def run_grid_search(model, X_train, y_train, param_grids, metrics, results_path)
     print(f"Grid search results saved to: {results_file}")
 
     # Extract additional metrics
-    best_params = grid_search.best_params_
-    best_index = grid_search.best_index_
-    mean_train_accuracy = grid_search.cv_results_['mean_train_accuracy'][best_index]
-    mean_test_accuracy = grid_search.cv_results_['mean_test_accuracy'][best_index]
-    mean_fit_time = grid_search.cv_results_['mean_fit_time'][best_index]
+    mean_train_accuracy = grid_search.cv_results_['mean_train_accuracy'][grid_search.best_index_]
+    mean_test_accuracy = grid_search.cv_results_['mean_test_accuracy'][grid_search.best_index_]
+    mean_fit_time = grid_search.cv_results_['mean_fit_time'][grid_search.best_index_]
 
     # Save best model metrics
     metrics_file = os.path.join(results_path, "grid_search_metrics.txt")
     with open(metrics_file, "w") as f:
-        f.write(f"Best Parameters: {best_params}\n")
+        f.write(f"Best Parameters: {grid_search.best_params_}\n")
         f.write(f"Best Train accuracy: {mean_train_accuracy:.4f}\n")
         f.write(f"Best Test accuracy: {mean_test_accuracy:.4f}\n")
         f.write(f"Mean Fit Time: {mean_fit_time:.4f} seconds\n")
@@ -84,10 +87,11 @@ def run_grid_search(model, X_train, y_train, param_grids, metrics, results_path)
     return grid_search
 
 
-def eval_and_save_logistic(best_model, X_test, y_test, metrics, save_path):
+def train_and_save_logistic(best_model, X_train, y_train, X_test, y_test, metrics, save_path):
     """
     Evaluate the best logistic regression model and saves it.
     """
+    best_model.fit(X_train, y_train)
     y_pred = best_model.predict(X_test)
     scores = {score_name: get_scorer(score_name)(best_model, X_test, y_test) for score_name in metrics}
     report = classification_report(y_test, y_pred, target_names=[f"Class {i}" for i in range(CIFAR_NUM_CLS)])
@@ -112,14 +116,14 @@ def get_model(model_type, model_parameters):
     model_kwargs = {model_param: value for model_param, value in model_parameters.items()
                         if model_param not in ["transform_groups", "hyperparameters"]}
     if model_type == "Logistic":
-        model_instance = LogisticRegression(**model_kwargs)
+        ModelCls = LogisticRegression
         scoring_metrics = METRICS_MICRO_MACRO + METRICS_ROC_AUC+ ["accuracy"]
     elif model_type == "SVM_RBF":
-        model_instance = SVC(**model_kwargs)
+        ModelCls = SVC
         scoring_metrics = METRICS_MICRO_MACRO + ["accuracy"]
     else:
         raise ValueError(f"{model_type} is not supported, please use 'Logistic' or 'SVM_RBF'")
-    return model_instance, scoring_metrics
+    return ModelCls, model_kwargs, scoring_metrics
 
 
 if __name__ == "__main__":
@@ -131,7 +135,7 @@ if __name__ == "__main__":
         model_parameters = yaml.safe_load(params_file)[model_type]
     print(f"Experimenting with model: {model_type}")
 
-    model_instance, scoring_metrics = get_model(model_type, model_parameters)
+    ModelCls, model_kwargs, scoring_metrics = get_model(model_type, model_parameters)
     for transform_group in model_parameters["transform_groups"]:
         save_path = os.path.join(results_path, f"{model_type}_{'_'.join(transform_group)}")
         os.makedirs(save_path, exist_ok=True)
@@ -148,8 +152,8 @@ if __name__ == "__main__":
 
         # Run Grid Search for selected model
         print(f"Running Grid Search for {model_type}...")
-        grid_search = run_grid_search(model_instance, X_train, y_train, model_parameters["hyperparameters"], scoring_metrics, save_path)
+        grid_search = run_grid_search(ModelCls(**model_kwargs), X_train, y_train, model_parameters["hyperparameters"], scoring_metrics, save_path)
 
         # Train and Save the Best Model
         print("Training and saving the best model...")
-        eval_and_save_logistic(grid_search, X_test, y_test, scoring_metrics, save_path)
+        train_and_save_logistic(ModelCls(**model_kwargs, **grid_search.best_params_), X_train, y_train, X_test, y_test, scoring_metrics, save_path)
