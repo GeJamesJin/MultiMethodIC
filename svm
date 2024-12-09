@@ -19,7 +19,7 @@ def prepare_data(data_path):
 
 def run_grid_search_svm(X_train, y_train, results_path):
     """
-    Performs grid search for SVM with RBF Kernel.
+    Performs grid search for SVM with RBF Kernel and saves detailed metrics.
     """
     svm = SVC()
     param_grid = {
@@ -36,6 +36,22 @@ def run_grid_search_svm(X_train, y_train, results_path):
     results_file = os.path.join(results_path, "svm_rbf_grid_search_results.csv")
     results_df.to_csv(results_file, index=False)
     print(f"Grid search results saved to: {results_file}")
+
+    # Extract additional metrics
+    best_params = grid_search.best_params_
+    best_index = grid_search.best_index_
+    mean_train_score = grid_search.cv_results_['mean_train_score'][best_index]
+    mean_test_score = grid_search.cv_results_['mean_test_score'][best_index]
+    mean_fit_time = grid_search.cv_results_['mean_fit_time'][best_index]
+
+    # Save best model metrics
+    metrics_file = os.path.join(results_path, "svm_rbf_best_metrics.txt")
+    with open(metrics_file, "w") as f:
+        f.write(f"Best Parameters: {best_params}\n")
+        f.write(f"Best Train Score: {mean_train_score:.4f}\n")
+        f.write(f"Best Test Score: {mean_test_score:.4f}\n")
+        f.write(f"Mean Fit Time: {mean_fit_time:.4f} seconds\n")
+    print(f"Best model metrics saved to: {metrics_file}")
 
     return grid_search
 
