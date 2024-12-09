@@ -3,23 +3,28 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import GridSearchCV, train_test_split, StratifiedKFold
 from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, PolynomialFeatures
 from sklearn.metrics import classification_report, accuracy_score
 
 
-def prepare_data(data_path):
+def prepare_data_with_polynomial_features(data_path, degree=2):
     """
-    Loads and prepares the dataset for Logistic Regression.
+    Loads and prepares the dataset for Logistic Regression with Polynomial Features.
     """
     dataset = np.load(data_path)
     X, y = dataset["images"], dataset["labels"].flatten()
-    X = X.reshape((X.shape[0], -1))  # Flatten the images for Logistic Regression
+    X = X.reshape((X.shape[0], -1))  # Flatten the images
+
+    # Apply polynomial features
+    poly = PolynomialFeatures(degree=degree, include_bias=False)
+    X = poly.fit_transform(X)
+
     return train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
 
 def run_grid_search_logistic(X_train, y_train, results_path):
     """
-    Performs grid search for Logistic Regression.
+    Performs grid search for Logistic Regression and saves detailed metrics.
     """
     log_reg = LogisticRegression(max_iter=5000)
     param_grid = {
@@ -35,6 +40,22 @@ def run_grid_search_logistic(X_train, y_train, results_path):
     results_file = os.path.join(results_path, "logistic_regression_grid_search_results.csv")
     results_df.to_csv(results_file, index=False)
     print(f"Grid search results saved to: {results_file}")
+
+    # Extract additional metrics
+    best_params = grid_search.best_params_
+    best_index = grid_search.best_index_
+    mean_train_score = grid_search.cv_results_['mean_train_score'][best_index]
+    mean_test_score = grid_search.cv_results_['mean_test_score'][best_index]
+    mean_fit_time = grid_search.cv_results_['mean_fit_time'][best_index]
+
+    # Save best model metrics
+    metrics_file = os.path.join(results_path, "logistic_regression_best_metrics.txt")
+    with open(metrics_file, "w") as f:
+        f.write(f"Best Parameters: {best_params}\n")
+        f.write(f"Best Train Score: {mean_train_score:.4f}\n")
+        f.write(f"Best Test Score: {mean_test_score:.4f}\n")
+        f.write(f"Mean Fit Time: {mean_fit_time:.4f} seconds\n")
+    print(f"Best model metrics saved to: {metrics_file}")
 
     return grid_search
 
@@ -69,7 +90,8 @@ if __name__ == "__main__":
     results_path = "results/logistic_regression"
     os.makedirs(results_path, exist_ok=True)
 
-    X_train, X_test, y_train, y_test = prepare_data(train_data_path)
+    # Prepare data with polynomial features
+    X_train, X_test, y_train, y_test = prepare_data_with_polynomial_features(train_data_path, degree=2)
 
     # Standardize the data
     scaler = StandardScaler()
@@ -79,5 +101,5 @@ if __name__ == "__main__":
     print("Running Grid Search for Logistic Regression...")
     grid_search = run_grid_search_logistic(X_train, y_train, results_path)
 
-    best_logistic_model = LogisticRegression(**grid_search.best_params_, max_iter=1000)
+    best_logistic_model = LogisticRegression(**grid_search.best_params_, max_iter=5000)
     train_and_save_logistic(best_logistic_model, X_train, y_train, X_test, y_test, results_path)
