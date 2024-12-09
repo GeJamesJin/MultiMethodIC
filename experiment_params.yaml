@@ -3,6 +3,26 @@
 
 PCA:
   components_to_use: [15, 23]    # interpreted as a **half-open** range
+Logistic:
+  # Everything other than "transformation_group" and "hyperparameters" are keyword arguments for the classifier
+  solver: "saga"
+  max_iter: 5000
+  transform_groups:    # Each line indicates applying its transformations in order
+    - ["PCA"]
+    - ["PCA", "Polynomial"]
+    - ["PCA", "RBF"]
+  hyperparameters:    # Each dictionary (lines after "-" until the next "-") represents valid permutations
+    - C: [0.0001, 0.0005, 0.001, 0.005, 0.01, 1]
+      penalty: ["l1", "l2"]
+    - penalty: [null]
+SVM_RBF:    # Same structure as Logistic
+  transform_groups:
+    - []
+    - ["PCA"]
+    - ["PCA", "Polynomial"]
+  hyperparameters:
+    - C: [0.0001, 0.0005, 0.001, 0.005, 0.01, 1]
+      gamma: ["scale", "auto"]
 CNN:
   architecture:
     resnet:
