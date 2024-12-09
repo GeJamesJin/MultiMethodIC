@@ -1,0 +1,83 @@
+import os
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import GridSearchCV, train_test_split, StratifiedKFold
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import classification_report, accuracy_score
+
+
+def prepare_data(data_path):
+    """
+    Loads and prepares the dataset for Logistic Regression.
+    """
+    dataset = np.load(data_path)
+    X, y = dataset["images"], dataset["labels"].flatten()
+    X = X.reshape((X.shape[0], -1))  # Flatten the images for Logistic Regression
+    return train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+
+
+def run_grid_search_logistic(X_train, y_train, results_path):
+    """
+    Performs grid search for Logistic Regression.
+    """
+    log_reg = LogisticRegression(max_iter=5000)
+    param_grid = {
+        "C": [0.01, 0.1, 1, 10, 100],
+        "solver": ["lbfgs", "liblinear"]
+    }
+    cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
+    grid_search = GridSearchCV(log_reg, param_grid, scoring="accuracy", cv=cv, n_jobs=-1, verbose=4, return_train_score=True)
+    grid_search.fit(X_train, y_train)
+
+    # Save grid search results
+    results_df = pd.DataFrame(grid_search.cv_results_)
+    results_file = os.path.join(results_path, "logistic_regression_grid_search_results.csv")
+    results_df.to_csv(results_file, index=False)
+    print(f"Grid search results saved to: {results_file}")
+
+    return grid_search
+
+
+def train_and_save_logistic(best_model, X_train, y_train, X_test, y_test, save_path):
+    """
+    Trains the Logistic Regression model with the best parameters and saves it.
+    """
+    # Train the model
+    best_model.fit(X_train, y_train)
+
+    # Evaluate the model
+    y_pred = best_model.predict(X_test)
+    accuracy = accuracy_score(y_test, y_pred)
+    report = classification_report(y_test, y_pred, target_names=[f"Class {i}" for i in range(10)])
+
+    # Save the model
+    model_file = os.path.join(save_path, "logistic_regression.joblib")
+    pd.to_pickle(best_model, model_file)
+    print(f"Model saved to: {model_file}")
+
+    # Save evaluation results
+    eval_file = os.path.join(save_path, "logistic_regression_evaluation.txt")
+    with open(eval_file, "w") as f:
+        f.write(f"Accuracy: {accuracy:.4f}\n")
+        f.write(report)
+    print(f"Evaluation results saved to: {eval_file}")
+
+
+if __name__ == "__main__":
+    train_data_path = os.path.join("train_data", "collected_images.npz")
+    results_path = "results/logistic_regression"
+    os.makedirs(results_path, exist_ok=True)
+
+    X_train, X_test, y_train, y_test = prepare_data(train_data_path)
+
+    # Standardize the data
+    scaler = StandardScaler()
+    X_train = scaler.fit_transform(X_train)
+    X_test = scaler.transform(X_test)
+
+    print("Running Grid Search for Logistic Regression...")
+    grid_search = run_grid_search_logistic(X_train, y_train, results_path)
+
+    best_logistic_model = LogisticRegression(**grid_search.best_params_, max_iter=1000)
+    train_and_save_logistic(best_logistic_model, X_train, y_train, X_test, y_test, results_path)
