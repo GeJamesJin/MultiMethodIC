@@ -1,0 +1,117 @@
+import os
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import GridSearchCV, train_test_split, StratifiedKFold
+from sklearn.svm import SVC
+from sklearn.preprocessing import StandardScaler, PolynomialFeatures
+from sklearn.metrics import classification_report, accuracy_score
+
+
+def prepare_data_with_polynomial(data_path, subset_size=100, degree=2):
+    """
+    Loads and prepares a subset of the dataset with Polynomial Features for SVM.
+    """
+    dataset = np.load(data_path)
+    X, y = dataset["images"], dataset["labels"].flatten()
+    X = X[:subset_size]  # Limit to the first 'subset_size' samples
+    y = y[:subset_size]
+    X = X.reshape((X.shape[0], -1))  # Flatten the images for SVM
+
+    # Apply Polynomial Transformation
+    print(f"Applying Polynomial Features with degree {degree}...")
+    poly = PolynomialFeatures(degree=degree, include_bias=False)
+    X_poly = poly.fit_transform(X)
+
+    print(f"Shape after Polynomial Features: {X_poly.shape}")
+    return train_test_split(X_poly, y, test_size=0.2, random_state=42, stratify=y)
+
+
+def run_grid_search_svm(X_train, y_train, results_path):
+    """
+    Performs grid search for SVM with RBF Kernel and saves detailed metrics.
+    """
+    svm = SVC()
+    param_grid = {
+        "C": [0.01, 0.1, 1, 10, 100],
+        "gamma": ["scale", "auto", 0.001, 0.01, 0.1, 1],
+        "kernel": ["rbf"]
+    }
+    cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
+    grid_search = GridSearchCV(svm, param_grid, scoring="accuracy", cv=cv, n_jobs=-1, verbose=4, return_train_score=True)
+    grid_search.fit(X_train, y_train)
+
+    # Save grid search results
+    results_df = pd.DataFrame(grid_search.cv_results_)
+    results_file = os.path.join(results_path, "svm_poly_grid_search_results.csv")
+    results_df.to_csv(results_file, index=False)
+    print(f"Grid search results saved to: {results_file}")
+
+    # Extract additional metrics
+    best_params = grid_search.best_params_
+    best_index = grid_search.best_index_
+    mean_train_score = grid_search.cv_results_['mean_train_score'][best_index]
+    mean_test_score = grid_search.cv_results_['mean_test_score'][best_index]
+    mean_fit_time = grid_search.cv_results_['mean_fit_time'][best_index]
+
+    # Save best model metrics
+    metrics_file = os.path.join(results_path, "svm_poly_best_metrics.txt")
+    with open(metrics_file, "w") as f:
+        f.write(f"Best Parameters: {best_params}\n")
+        f.write(f"Best Train Score: {mean_train_score:.4f}\n")
+        f.write(f"Best Test Score: {mean_test_score:.4f}\n")
+        f.write(f"Mean Fit Time: {mean_fit_time:.4f} seconds\n")
+    print(f"Best model metrics saved to: {metrics_file}")
+
+    return grid_search
+
+
+def train_and_save_svm(best_model, X_train, y_train, X_test, y_test, save_path):
+    """
+    Trains the SVM model with the best parameters and saves it.
+    """
+    # Train the model
+    best_model.fit(X_train, y_train)
+
+    # Evaluate the model
+    y_pred = best_model.predict(X_test)
+    accuracy = accuracy_score(y_test, y_pred)
+    report = classification_report(y_test, y_pred, target_names=[f"Class {i}" for i in range(10)])
+
+    # Save the model
+    model_file = os.path.join(save_path, "svm_poly.joblib")
+    pd.to_pickle(best_model, model_file)
+    print(f"Model saved to: {model_file}")
+
+    # Save evaluation results
+    eval_file = os.path.join(save_path, "svm_poly_evaluation.txt")
+    with open(eval_file, "w") as f:
+        f.write(f"Accuracy: {accuracy:.4f}\n")
+        f.write(report)
+    print(f"Evaluation results saved to: {eval_file}")
+
+
+if __name__ == "__main__":
+    train_data_path = os.path.join("train_data", "collected_images.npz")
+    results_path = "results/svm_poly"
+    os.makedirs(results_path, exist_ok=True)
+
+    # Prepare data with Polynomial Transformation
+    print("Preparing data with Polynomial Features...")
+    X_train, X_test, y_train, y_test = prepare_data_with_polynomial(
+        train_data_path, subset_size=100, degree=2
+    )
+
+    # Standardize the data
+    print("Standardizing the data...")
+    scaler = StandardScaler()
+    X_train = scaler.fit_transform(X_train)
+    X_test = scaler.transform(X_test)
+
+    # Run Grid Search for SVM
+    print("Running Grid Search for SVM...")
+    grid_search = run_grid_search_svm(X_train, y_train, results_path)
+
+    # Train and Save the Best Model
+    print("Training and saving the best model...")
+    best_svm_model = SVC(**grid_search.best_params_)
+    train_and_save_svm(best_svm_model, X_train, y_train, X_test, y_test, results_path)
