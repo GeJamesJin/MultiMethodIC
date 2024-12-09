@@ -2,11 +2,13 @@ from functools import partial
 import numpy as np
 import os
 import pandas as pd
-from sklearn.model_selection import GridSearchCV, StratifiedKFold
+from sklearn.model_selection import GridSearchCV
 from skorch.callbacks import Checkpoint, EpochScoring, TrainEndCheckpoint, EarlyStopping
 from skorch.classifier import NeuralNetClassifier
+from skorch.dataset import Dataset
 from timm.models import create_model
 import torch
+import torchvision
 import yaml
 
 
@@ -16,6 +18,22 @@ HPARAM_NAME_MAP = {"learning_rates": "lr",
                    "dropout": "module__drop_rate",
                    "momentum": "optimizer__momentum",
                    "l2_reg": "optimizer__weight_decay"}
+
+
+def load_dataset(data_path):
+    dataset = np.load(data_path)
+    X, y = dataset["images"].astype(float), dataset["labels"].flatten()
+    X /= 255
+    return X, y
+
+
+class ImageDataset(Dataset):
+
+    imagenet_transform = torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+
+    def transform(self, X, y):
+        X, y = super().transform(X, y)
+        return self.imagenet_transform(X), y
 
 
 # Currently unused
@@ -33,7 +51,7 @@ def run_grid_search_on_model(model_creator, hyperperameters, device, data_path):
     should be lists of values to try.
     """
     trainer = NeuralNetClassifier(model_creator, criterion=torch.nn.CrossEntropyLoss, optimizer=TORCH_OPTMZR_CLSMAP[hyperperameters["optimizer"]],
-                                  max_epochs=50, train_split=None, callbacks=[EarlyStopping("train_loss")], verbose=0, device=device)
+                                  max_epochs=50, dataset=ImageDataset, train_split=None, callbacks=[EarlyStopping("train_loss")], verbose=0, device=device)
 
     gsearch_params = {}
     for parameter, values in hyperperameters.items():
@@ -42,10 +60,9 @@ def run_grid_search_on_model(model_creator, hyperperameters, device, data_path):
             raise KeyError(f"Invalid/Unknown hyperperameter name for training: {parameter}")
         gsearch_params[HPARAM_NAME_MAP[parameter]] = values
 
-    dataset = np.load(data_path)
-    X, y = dataset["images"], dataset["labels"].flatten()
+    X, y = load_dataset(data_path)
     X = torch.tensor(X.reshape((X.shape[0], 3, 32, 32))).float()
-    gs = GridSearchCV(trainer, gsearch_params, scoring="accuracy", n_jobs=3, refit=False, cv=3, verbose=4, return_train_score=True)
+    gs = GridSearchCV(trainer, gsearch_params, scoring="accuracy", n_jobs=3, refit=False, cv=4, verbose=4, return_train_score=True)
     gs.fit(X, y)
     return gs
 
@@ -63,10 +80,10 @@ def train_and_save_model(model_creator, hyperperameters, device, data_path, save
 
     hyp_params_no_optim = hyperperameters.copy()
     optimizer = hyp_params_no_optim.pop("optimizer")
-    trainer = NeuralNetClassifier(model_creator, criterion=torch.nn.CrossEntropyLoss, optimizer=TORCH_OPTMZR_CLSMAP[optimizer], max_epochs=150, batch_size=64,
-                                  callbacks=performance_callbacks + checkpoint_callbacks + [EarlyStopping()], device=device, **hyp_params_no_optim)
-    dataset = np.load(data_path)
-    X, y = dataset["images"], dataset["labels"].flatten()
+    trainer = NeuralNetClassifier(model_creator, criterion=torch.nn.CrossEntropyLoss, optimizer=TORCH_OPTMZR_CLSMAP[optimizer], max_epochs=150,
+                                  batch_size=64, dataset=ImageDataset, callbacks=performance_callbacks + checkpoint_callbacks + [EarlyStopping()],
+                                  device=device, **hyp_params_no_optim)
+    X, y = load_dataset(data_path)
     X = torch.tensor(X.reshape((X.shape[0], 3, 32, 32))).float()
     trainer.fit(X, y)
 
@@ -79,10 +96,10 @@ if __name__ == "__main__":
     
     models_to_fit = []
     for arch, variant in cnn_params["architecture"].items():
-        if arch == "resnet":
-            resnet_name = f"resnet{variant['num_layers']}"
-            resnet_creator = partial(create_model, resnet_name, variant["pretrained"], num_classes=CIFAR_NUM_CLS)
-            models_to_fit.append((resnet_name, resnet_creator))
+        if arch == "resnet" or arch == "vgg":
+            cnn_name = f"{arch}{variant['num_layers']}"
+            cnn_creator = partial(create_model, cnn_name, variant["pretrained"], num_classes=CIFAR_NUM_CLS)
+            models_to_fit.append((cnn_name, cnn_creator))
         else:
             raise NotImplementedError(f"Model architecture {arch} is not implemented yet.")
 
