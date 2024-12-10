@@ -129,7 +129,7 @@ def get_model(model_type, model_parameters):
 if __name__ == "__main__":
     # Path to the dataset
     train_data_path = os.path.join("train_data", "collected_images.npz")
-    model_type = "Logistic"    # One of "Logistic" or "SVM_RBF"
+    model_type = "SVM_RBF"    # One of "Logistic" or "SVM_RBF"
     results_path = "results"
     with open("experiment_params.yaml", "r") as params_file:
         model_parameters = yaml.safe_load(params_file)[model_type]
@@ -152,9 +152,9 @@ if __name__ == "__main__":
         X_test = scaler.transform(X_test)
 
         # Run Grid Search for selected model
-        print(f"Running Grid Search for {model_type}...")
-        grid_search = run_grid_search(ModelCls(**model_kwargs), X_train, y_train, model_parameters["hyperparameters"], scoring_metrics, save_path)
+        # print(f"Running Grid Search for {model_type}...")
+        # grid_search = run_grid_search(ModelCls(**model_kwargs), X_train, y_train, model_parameters["hyperparameters"], scoring_metrics, save_path)
 
         # Train and Save the Best Model
         print("Training and saving the best model...")
-        train_and_save_logistic(ModelCls(**model_kwargs, **grid_search.best_params_), X_train, y_train, X_test, y_test, scoring_metrics, save_path)
+        train_and_save_logistic(ModelCls(**model_kwargs, **{'C': 1, 'gamma': 'auto'}), X_train, y_train, X_test, y_test, scoring_metrics, save_path)

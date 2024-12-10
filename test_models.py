@@ -4,8 +4,10 @@ import joblib
 import json
 from matplotlib import pyplot as plt
 import numpy as np
+import os
 from os.path import exists, join
 from sklearn.metrics import get_scorer
+from sklearn.preprocessing import StandardScaler
 from skorch.callbacks import Checkpoint
 from skorch.classifier import NeuralNetClassifier
 from timm.models import create_model
@@ -55,12 +57,15 @@ def test_classifiers(classifier_params, results_path, test_out_path, test_data_p
             print(f"Testing {classifier_type} with transformations: {transform_group}")
             print(f"Loading test data from {test_data_path}...")
             X_test, y_test = prepare_data_with_transformations(test_data_path, transform_group)
+            X_test = StandardScaler().fit_transform(X_test)
             model_name = f"{classifier_type}_{'_'.join(transform_group)}"
             classifier_model = joblib.load(join(results_path, model_name, "best_model.pkl"))
-            predict_and_store_if_needed(join(test_out_path, model_name), classifier_model, X_test)
+            model_out_path = join(test_out_path, model_name)
+            os.makedirs(model_out_path, exist_ok=True)
+            predict_and_store_if_needed(model_out_path, classifier_model, X_test)
             if classifier_type == "Logistic":
-                predict_probabilities_and_store_if_needed(join(test_out_path, model_name), classifier_model, X_test)
-            score_and_store_if_needed(join(test_out_path, model_name), classifier_model, X_test, y_test, classifier_metrics[classifier_type])
+                predict_probabilities_and_store_if_needed(model_out_path, classifier_model, X_test)
+            score_and_store_if_needed(model_out_path, classifier_model, X_test, y_test, classifier_metrics[classifier_type])
 
 
 def test_cnn(cnn_params, results_path, test_out_path, test_data_path, cnn_metrics):
@@ -78,14 +83,16 @@ def test_cnn(cnn_params, results_path, test_out_path, test_data_path, cnn_metric
             print(f"Loading test data from {test_data_path}...")
             X_test, y_test = load_dataset(test_data_path)
             X_test = torch.tensor(X_test.reshape((X_test.shape[0], 3, 32, 32))).float()
-            predict_and_store_if_needed(join(test_out_path, cnn_name), cnn_model, X_test)
-            predict_probabilities_and_store_if_needed(join(test_out_path, cnn_name), cnn_model, X_test)
-            score_and_store_if_needed(join(test_out_path, cnn_name), cnn_model, X_test, y_test, cnn_metrics)
+            model_out_path = join(test_out_path, cnn_name)
+            os.makedirs(model_out_path, exist_ok=True)
+            predict_and_store_if_needed(model_out_path, cnn_model, X_test)
+            predict_probabilities_and_store_if_needed(model_out_path, cnn_model, X_test)
+            score_and_store_if_needed(model_out_path, cnn_model, X_test, y_test, cnn_metrics)
         else:
             raise NotImplementedError(f"Model architecture {arch} is not implemented yet.")
 
 
-def plot_model_performance_comparisons(classifier_params, cnn_params, test_out_path, fig_save_path):
+def plot_model_performance_comparisons(classifier_params, cnn_params, test_out_path, tables_path, fig_save_path):
     model_names = []
     
     for classifier_type, classifier_params in classifier_params.items():
@@ -107,7 +114,7 @@ def plot_model_performance_comparisons(classifier_params, cnn_params, test_out_p
             else:
                 scores[score_type] = {model_name: value}
     
-    with open(join(test_out_path, "best_models_test_scores.csv"), "w") as table_file:
+    with open(join(tables_path, "best_models_test_scores.csv"), "w") as table_file:
         writer = csv.writer(table_file, lineterminator="\n")
         writer.writerow([""] + model_names)
         for score_type, model_perfs in scores.items():
@@ -119,14 +126,15 @@ def plot_model_performance_comparisons(classifier_params, cnn_params, test_out_p
     for score_name, model_perfs in scores.items():
         fig, ax = plt.subplots(figsize=(len(model_perfs), 6), constrained_layout=True)
         ax.bar(model_perfs.keys(), model_perfs.values())
-        ax.set_ylabel(score_name.capitalize())
-        ax.tick_params(axis="x", labelrotation=45)
-        ax.set_title(f"{score_name.capitalize()} for Models Trained With Best Parameters")
+        ax.set_ylabel(score_name.capitalize(), fontsize=15)
+        ax.tick_params(axis="x", labelsize=12, labelrotation=45)
+        ax.tick_params(axis="y", labelsize=12)
+        ax.set_title(f"{score_name.capitalize()} for Models Trained With Best Parameters", fontsize=16 if len(model_perfs) < 8 else 18)
         fig.savefig(join(fig_save_path, f"best_models_{score_name}.png"))
 
 
 if __name__ == "__main__":
-    results_path, test_out_path, figures_path = "results", "test_outputs", "figures"
+    results_path, test_out_path, tables_path, figures_path = "results", "test_outputs", "tables", "figures"
     classifier_types = ["Logistic", "SVM_RBF"]
     test_data_path = join("test_data", "collected_images.npz")
     with open("experiment_params.yaml", "r") as exp_params:
@@ -134,6 +142,6 @@ if __name__ == "__main__":
     
     classifier_params = {cls_type: params[cls_type] for cls_type in classifier_types}
     classifier_metrics = {cls_type: get_model(cls_type, {})[2] for cls_type in classifier_types}
-    # test_classifiers(classifier_params, results_path, test_out_path, test_data_path, classifier_metrics)
-    # test_cnn(params["CNN"], results_path, test_out_path, test_data_path, VALIDATION_METRICS + ["accuracy"])
-    plot_model_performance_comparisons(classifier_params, params["CNN"], test_out_path, figures_path)
+    test_classifiers(classifier_params, results_path, test_out_path, test_data_path, classifier_metrics)
+    test_cnn(params["CNN"], results_path, test_out_path, test_data_path, VALIDATION_METRICS + ["accuracy"])
+    plot_model_performance_comparisons(classifier_params, params["CNN"], test_out_path, tables_path, figures_path)

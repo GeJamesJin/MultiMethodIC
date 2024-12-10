@@ -114,7 +114,7 @@ if __name__ == "__main__":
         model_save_path = os.path.join(results_path, model_name)
         if not os.path.exists(model_save_path): os.makedirs(model_save_path)
         gs_dframe, dframe_path = pd.DataFrame.from_dict(gs_done.cv_results_), os.path.join(model_save_path, "grid_search_results.csv")
-        gs_dframe.to_csv(dframe_path)    # read with pd.read_csv("path to csv", index_col=0, comment="#")
+        gs_dframe.to_csv(dframe_path, index=False)
         with open(dframe_path, "r+") as dframe_file:
             content = dframe_file.read()
             dframe_file.seek(0, 0)
