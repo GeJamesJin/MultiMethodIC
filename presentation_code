@@ -1,0 +1,322 @@
+\documentclass{beamer}
+
+\mode<presentation>
+{
+  \usetheme{NYU}      % Use the NYU theme
+  \usecolortheme{default}
+  \usefonttheme{default}
+  \setbeamertemplate{navigation symbols}{}
+  \setbeamertemplate{caption}[numbered]
+} 
+
+\usepackage[english]{babel}
+\usepackage[utf8x]{inputenc}
+\usepackage{graphicx} % Required for including images
+
+\title[ML Final Project]{Machine Learning Final Project}
+\author{Tianci Chen, James Jin}
+\institute{New York University}
+\date{12/19/2024}
+\titlegraphic{\hfill\includegraphics[height=1.5cm]{nyu_stacked_color}}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Outline}
+  \tableofcontents
+\end{frame}
+
+\section{Introduction}
+
+\begin{frame}{Project Overview}
+\begin{itemize}
+  \item Objective: Tune hyperparameters and evaluate performance of multiple models
+  \item Models explored:
+    \begin{itemize}
+      \item Logistic Regression
+      \item Support Vector Machines (SVM)
+      \item Convolutional Neural Networks (CNN)
+    \end{itemize}
+  \item Metrics analyzed:
+    \begin{itemize}
+      \item F1 Score (Macro and Micro)
+      \item Accuracy
+      \item Recall
+      \item Precision
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Introduction to CIFAR-10}
+\begin{itemize}
+    \item CIFAR-10 is a widely used dataset for machine learning and computer vision tasks.
+    \item It consists of:
+    \begin{itemize}
+        \item 60,000 color images
+        \item 10 classes (e.g., airplane, automobile, bird, cat, deer, dog, frog, horse, ship, truck)
+        \item Image size: 32x32 pixels
+    \end{itemize}
+    \item Dataset split:
+    \begin{itemize}
+        \item 50,000 training images
+        \item 10,000 test images
+    \end{itemize}
+    \item Commonly used for:
+    \begin{itemize}
+        \item Image classification benchmarks
+        \item Evaluating convolutional neural networks (CNNs)
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\section{Preprocessing}
+
+\begin{frame}{Preprocessing Techniques}
+\begin{itemize}
+  \item Principal Component Analysis (PCA):
+    \begin{itemize}
+      \item Reduced feature dimensions while retaining important variance.
+    \end{itemize}
+  \item Polynomial Features:
+    \begin{itemize}
+      \item Created interaction terms for better non-linear relationships.
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\section{Models and Methods}
+
+\subsection{Logistic Regression}
+
+\begin{frame}{Logistic Regression}
+\begin{itemize}
+  \item Transformation
+  \begin{itemize}
+      \item Radial Basis Function (RBF)
+      \item RBF and PCA
+      \item Polynomial transformation
+  \end{itemize}
+  \item Penalties:
+    \begin{itemize}
+      \item \textbf{L1}: Suitable for sparse datasets
+      \item \textbf{L2}: Assigns balanced importance to all features
+    \end{itemize}
+  \item Results:
+    \begin{itemize}
+      \item Optimal \texttt{param\_C} lies in the moderate range (0.001--1.0)
+      \item L2 performs better in balanced datasets
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Logistic Regression: Hyperparameter Analysis}
+\begin{figure}
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{C_change_wrt_best_params.png}
+        \caption*{Performance vs. C}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Feature_transformations_under_best_params.png}
+        \caption*{Feature Transformations}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Penalty_change_wrt_best_params.png}
+        \caption*{Performance vs. Penalty}
+    \end{minipage}
+\end{figure}
+\end{frame}
+
+\subsection{Support Vector Machines}
+
+\begin{frame}{Support Vector Machines (SVM)}
+\begin{itemize}
+  \item Transformation
+  \begin{itemize}
+      \item Radial Basis Function (RBF)
+      \item RBF and PCA
+      \item Polynomial transformation
+  \end{itemize}
+  \item Hyperparameters:
+    \begin{itemize}
+      \item \texttt{param\_C}: Regularization strength
+      \item \texttt{param\_gamma}: Kernel coefficient
+    \end{itemize}
+  \item Results:
+    \begin{itemize}
+      \item \texttt{param\_C} affects model complexity:
+        \begin{itemize}
+          \item Low values: Underfitting
+          \item High values: Overfitting
+        \end{itemize}
+      \item \texttt{param\_gamma} controls feature interactions: Theortically, moderate values yield best results
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{SVM: Hyperparameter Analysis}
+\begin{figure}
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{C_change_wrt_best_params (1).png}
+        \caption*{Performance vs. C}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Feature_transformations_under_best_params (1).png}
+        \caption*{Feature Transformations}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Gamma_change_wrt_best_params.png}
+        \caption*{Performance vs. Gamma}
+    \end{minipage}
+\end{figure}
+\end{frame}
+
+\subsection{Convolutional Neural Networks}
+
+\begin{frame}{Convolutional Neural Networks (CNN)}
+\begin{itemize}
+  \item Architectures:
+    \begin{itemize}
+      \item ResNet18
+      \item ResNet34
+      \item ResNet50
+    \end{itemize}
+  \item Hyperparameters:
+    \begin{itemize}
+      \item Learning rate (\texttt{param\_lr})
+      \item Dropout rate (\texttt{param\_module\_drop\_rate})
+      \item Weight decay (\texttt{param\_optimizer\_weight\_decay})
+    \end{itemize}
+  \item Results:
+    \begin{itemize}
+      \item Learning rate: Optimal range (0.001--0.01)
+      \item Dropout: Moderate rates (0.2--0.5) prevent overfitting
+      \item Weight decay: Controls generalization; high values underfit
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Dropout Analysis}
+\begin{figure}
+  \includegraphics[width=\textwidth]{Dropout_change_wrt_best_params.png}
+  \caption{Performance vs. Dropout Rates}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Feature Transformation Analysis}
+\begin{figure}
+  \includegraphics[width=\textwidth]{Feature_transformations_under_best_params(2).png}
+  \caption{Performance vs. Different Feature Transformations}
+\end{figure}
+\end{frame}
+
+\begin{frame}{L2 Regularization Analysis}
+\begin{figure}
+  \includegraphics[width=\textwidth]{L2_reg_change_wrt_best_params.png}
+  \caption{Performance vs. L2 Regularization}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Learning Rate Analysis}
+\begin{figure}
+  \includegraphics[width=\textwidth]{Learning_rates_change_wrt_best_params.png}
+  \caption{Performance vs. Learning Rates}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Momentum Analysis}
+\begin{figure}
+  \includegraphics[width=\textwidth]{Momentum_change_wrt_best_params.png}
+  \caption{Performance vs. Momentum Values}
+\end{figure}
+\end{frame}
+
+
+\section{Results and Analysis}
+
+\begin{frame}{Accuracy Analysis}
+\begin{itemize}
+  \item Accuracy is one of the primary indicators of model performance.
+  \item ResNet models consistently outperform other models in terms of accuracy.
+\end{itemize}
+\begin{figure}
+  \includegraphics[width=\textwidth]{best_models_accuracy.png}
+  \caption{Accuracy for Models Trained with Best Parameters}
+\end{figure}
+\end{frame}
+
+\begin{frame}{F1 Score (Macro) Analysis}
+\begin{itemize}
+  \item F1 score (macro) measures the balance between precision and recall across all classes.
+  \item ResNet models achieve the highest F1 scores, indicating superior class balance.
+\end{itemize}
+\begin{figure}
+  \includegraphics[width=\textwidth]{best_models_f1_macro.png}
+  \caption{F1 Macro for Models Trained with Best Parameters}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Precision (Macro) Analysis}
+\begin{itemize}
+  \item Precision (macro) indicates the ability of the model to avoid false positives across all classes.
+  \item ResNet models dominate in this metric, followed by SVM.
+\end{itemize}
+\begin{figure}
+  \includegraphics[width=\textwidth]{best_models_precision_macro.png}
+  \caption{Precision Macro for Models Trained with Best Parameters}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Recall (Macro) Analysis}
+\begin{itemize}
+  \item Recall (macro) evaluates the model's ability to detect true positives across all classes.
+  \item ResNet models maintain the highest recall, indicating robustness in detecting all classes.
+\end{itemize}
+\begin{figure}
+  \includegraphics[width=\textwidth]{best_models_recall_macro.png}
+  \caption{Recall Macro for Models Trained with Best Parameters}
+\end{figure}
+\end{frame}
+
+\begin{frame}{ROC-AUC Analysis}
+\begin{itemize}
+  \item ROC-AUC (OvO) reflects the model’s ability to distinguish between classes.
+  \item ResNet models achieve near-perfect ROC-AUC scores, confirming their superior classification capabilities.
+\end{itemize}
+\begin{figure}
+  \includegraphics[width=\textwidth]{best_models_roc_auc_ovo.png}
+  \caption{ROC-AUC OvO for Models Trained with Best Parameters}
+\end{figure}
+\end{frame}
+
+\section{Conclusions and Recommendations}
+
+\begin{frame}{Conclusions and Recommendations}
+\begin{itemize}
+  \item Conclusions:
+    \begin{itemize}
+      \item ResNet models consistently outperform Logistic Regression and SVM in all metrics.
+      \item Regularization and proper hyperparameter tuning are critical for generalization.
+    \end{itemize}
+  \item Recommendations:
+    \begin{itemize}
+      \item Use ResNet models for image-based tasks.
+      \item For tabular data, SVM with moderate kernel parameters provides strong performance.
+      \item Regularization (dropout, weight decay) is crucial to prevent overfitting.
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\end{document}
