@@ -98,7 +98,9 @@ if __name__ == "__main__":
         cnn_params = yaml.safe_load(exp_params)["CNN"]
     
     models_to_fit = []
-    for arch, variant in cnn_params["architecture"].items():
+    for arch_entry in cnn_params["architecture"]:
+        arch = list(arch_entry.keys())[0]
+        variant = arch_entry[arch]
         if arch == "resnet" or arch == "vgg":
             cnn_name = f"{arch}{variant['num_layers']}"
             cnn_creator = partial(create_model, cnn_name, variant["pretrained"], num_classes=CIFAR_NUM_CLS)

@@ -47,7 +47,7 @@ def prepare_data_with_transformations(data_path, transformations, degree=2, n_co
             raise ValueError(f"Data preparation failed, unknown feature transformation {transform}")
 
     print(f"Original feature shape: {X.shape} -- {transformations} --> {X_transformed.shape}")
-    return train_test_split(X_transformed, y, test_size=0.2, random_state=42, stratify=y)
+    return X_transformed, y
 
 
 def run_grid_search(model, X_train, y_train, param_grids, metrics, results_path):
@@ -142,7 +142,8 @@ if __name__ == "__main__":
 
         # Prepare data and applying any transformations
         print(f"Preparing data with transformations: {', '.join(transform_group)}...")
-        X_train, X_test, y_train, y_test = prepare_data_with_transformations(train_data_path, transform_group)
+        X, y = prepare_data_with_transformations(train_data_path, transform_group)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
         # Standardize the data
         print("Standardizing the data...")
