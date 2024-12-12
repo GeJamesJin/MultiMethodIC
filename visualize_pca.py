@@ -1,26 +1,26 @@
+from apply_pca import pca
 from matplotlib import pyplot as plt
 import seaborn as sns
 import os
 import numpy as np
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
 import yaml
 
 
-def plot_feature_distribution(features, feature_names, save_dir="visualization/distributions"):
+def plot_feature_distribution(features, feature_names, save_dir="figures/PCA/distributions"):
     os.makedirs(save_dir, exist_ok=True) 
 
     for i, feature_name in enumerate(feature_names):
-        plt.figure(figsize=(8, 4))
+        plt.figure(figsize=(8, 4), constrained_layout=True)
 
-        sns.histplot(features[:, i], bins=30, kde=False, color='blue', alpha=0.7, label="Histogram")
-        
-        sns.kdeplot(features[:, i], color='red', label="Density", fill=True, alpha=0.4)
+        hist_series = sns.histplot(features[:, i], bins=30, kde=False, color='blue', alpha=0.7, label="Histogram")
+        density_ax = plt.twinx()
+        kde_series = sns.kdeplot(features[:, i], color='red', label="Density", fill=True, alpha=0.4, ax=density_ax)
+        series_handles = hist_series.get_legend_handles_labels()[0] + kde_series.get_legend_handles_labels()[0]
 
         plt.xlabel(feature_name)
         plt.ylabel("Frequency / Density")
         plt.title(f"Distribution of {feature_name}")
-        plt.legend()
+        plt.legend(handles=series_handles)
         plt.grid(True)
         
         save_path = os.path.join(save_dir, f"{feature_name}_distribution.png")
@@ -29,11 +29,11 @@ def plot_feature_distribution(features, feature_names, save_dir="visualization/d
         plt.close()
 
 
-def plot_feature_vs_target(features, target, feature_names, save_dir="visualization/relationships"):
+def plot_feature_vs_target(features, target, feature_names, save_dir="figures/PCA/relationships"):
     os.makedirs(save_dir, exist_ok=True)  
 
     for i, feature_name in enumerate(feature_names):
-        plt.figure(figsize=(8, 4))
+        plt.figure(figsize=(8, 4), constrained_layout=True)
         plt.scatter(features[:, i], target, s=10, alpha=0.7, color="green")
         plt.xlabel(feature_name)
         plt.ylabel("Target")
@@ -46,14 +46,14 @@ def plot_feature_vs_target(features, target, feature_names, save_dir="visualizat
         plt.close()
 
 
-def plot_correlation_matrix(features, feature_names, save_path="visualization/correlation/correlation_matrix.png"):
+def plot_correlation_matrix(features, feature_names, save_path="figures/PCA/correlation_matrix.png"):
     os.makedirs(os.path.dirname(save_path), exist_ok=True) 
 
     correlation_matrix = np.corrcoef(features.T)
 
     plt.figure(figsize=(12, 10))
     sns.heatmap(
-        correlation_matrix, 
+        correlation_matrix,
         xticklabels=feature_names, 
         yticklabels=feature_names, 
         annot=True, 
@@ -61,7 +61,7 @@ def plot_correlation_matrix(features, feature_names, save_path="visualization/co
         cmap="coolwarm", 
         cbar=True
     )
-    plt.title("Feature Correlation Matrix")
+    plt.title("PCA Features Correlation Matrix", fontsize=18)
     plt.tight_layout()
     
     plt.savefig(save_path)
@@ -92,7 +92,7 @@ if __name__ == "__main__":
 
 
     target = train_data["labels"]
-    feature_names = [f"PCA Component {i+1}" for i in range(max(components_to_use))]
+    feature_names = [f"PCA Component {i+1}" for i in range(n_components)]
 
     plot_feature_distribution(features_pca[0], feature_names)
 

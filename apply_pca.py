@@ -36,20 +36,26 @@ def calculate_PCAs(train_data, components_to_use):
 def plot_var_by_components(ax, var_kept):
     component_labels = [f"#{i + 1}" for i in range(len(var_kept))]
     ax.bar(component_labels, var_kept)
-    ax.set_xlabel("Individual PCA Components")
-    ax.set_ylabel("% Variance Captured")
-    ax.set_title("Variance Captured Per Component")
+    if len(component_labels) > 10:
+        ax.tick_params(axis="x", labelbottom=False)
+    ax.set_xlabel("Individual PCA Components", fontsize=12)
+    ax.set_ylabel("Amount of Variance Captured", fontsize=12)
+    ax.set_title("Variance Captured Per Component", fontsize=15)
 
 
 def plot_pca_var_kept(var_kept_pca):
-    fig_total, ax_total = plt.subplots(figsize=(max(len(var_kept_pca), 6), 6))
-    ax_total.plot([str(len(var_kept)) for var_kept in var_kept_pca], [sum(var_kept) for var_kept in var_kept_pca])
-    ax_total.set_xlabel("Number of PCA components")
-    ax_total.set_ylabel("% Total Variance Maintained")
-    ax_total.set_title("Variance Maintained Under Different PCA")
+    fig_total, ax_total = plt.subplots(figsize=(max(len(var_kept_pca) / 8, 6), 5), constrained_layout=True)    
+    comps_to_plot = [len(var_kept) for var_kept in var_kept_pca]
+    ax_total.plot(comps_to_plot, [sum(var_kept) for var_kept in var_kept_pca])
+    ax_total.set_xlabel("Number of PCA components", fontsize=15)
+    ax_total.xaxis.set_ticks(np.linspace(min(comps_to_plot), max(comps_to_plot),
+                                         len(comps_to_plot) // 5 if len(comps_to_plot) > 10 else len(comps_to_plot), dtype=int))
+    ax_total.tick_params(labelsize=12)
+    ax_total.set_ylabel("Amount of Total Variance Maintained", fontsize=15)
+    ax_total.set_title("Variance Maintained Under PCA", fontsize=18)
     figs_by_component = []
     for var_kept in var_kept_pca:
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(constrained_layout=True)
         plot_var_by_components(ax, var_kept)
         figs_by_component.append(fig)
     return fig_total, figs_by_component
@@ -63,6 +69,6 @@ if __name__ == "__main__":
 
     var_kept_pca = calculate_PCAs(train_data, components_to_use)
     fig_total, figs_by_component = plot_pca_var_kept(var_kept_pca)
-    fig_total.savefig("figures/PCA_Total_Variance_Maintained.png")
+    fig_total.savefig("figures/PCA/PCA_Total_Variance_Maintained.png")
     for fig, n_component in zip(figs_by_component, components_to_use):
-        fig.savefig(f"figures/PCA_Variance_Captured_{n_component}Components.png")
+        fig.savefig(f"figures/PCA/Variance_Captured/PCA_Variance_Captured_{n_component}Components.png")

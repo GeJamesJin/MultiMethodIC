@@ -15,8 +15,7 @@ CNN_HPARAM_REVERSE_MAP = {code_name: display_name for display_name, code_name in
 
 
 def filter_and_save_gs_dataframe(tables_path, gs_data, model_type, is_cnn):
-    columns_to_drop = [name for name in gs_data.columns if "time" in name or "rank" in name or "split" in name or
-                       ("param" in name and name != "params" and FEAT_TRANSFORM_NAME not in name)]
+    columns_to_drop = [name for name in gs_data.columns if "time" in name or "rank" in name or "split" in name]
     gs_data.drop(columns_to_drop, axis=1, inplace=True)
     
     def decode_params(params_str, is_cnn):
@@ -31,6 +30,8 @@ def filter_and_save_gs_dataframe(tables_path, gs_data, model_type, is_cnn):
         columns.insert(0, columns.pop(columns.index(col_to_move)))
     gs_data = gs_data.loc[:, columns]
     gs_data.rename(columns={f"param_{FEAT_TRANSFORM_NAME}": "feature transformations", "params": "hyperparameters"}, inplace=True)
+    param_cols = [name for name in gs_data.columns if "param_" in name and name != "params"]
+    gs_data.rename(columns={param_col: CNN_HPARAM_REVERSE_MAP[param_col.removeprefix("param_")] if is_cnn else param_col.removeprefix("param_") for param_col in param_cols}, inplace=True)
 
     train_columns, test_columns = [name for name in gs_data.columns if "train" in name], [name for name in gs_data.columns if "test" in name]
     gs_test, gs_train = gs_data.drop(train_columns, axis=1), gs_data.drop(test_columns, axis=1)
@@ -61,8 +62,6 @@ def visualize_single_param_change(param_ind, params_fixed, metrics_to_plot, trai
     ax.legend()
     if param_ind != FEAT_TRANSFORM_NAME:
         ax.set_xlabel(param_ind_display, fontsize=15)
-    else:
-        ax.tick_params(axis="x", labelrotation=45)
     ax.set_ylabel("Scores of Various Metrics", fontsize=15)
     ax.tick_params(labelsize=12)
     ax.set_title(f"Fixed hyperparameters: {', '.join([f'{CNN_HPARAM_REVERSE_MAP[param] if is_cnn else param}={value}' for param, value in params_fixed.items()])}", fontsize=11)

@@ -2,7 +2,7 @@
 # for future benefit, track all hyperparameters and other settings
 
 PCA:
-  components_to_use: [15, 23]    # interpreted as a **half-open** range
+  components_to_use: [1, 101]    # interpreted as a **half-open** range
 Logistic:
   # Everything other than "transformation_group" and "hyperparameters" are keyword arguments for the classifier
   solver: "saga"
